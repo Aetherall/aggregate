@@ -2,12 +2,11 @@ import {
   EventData,
   EventStoreDBClient,
   jsonEvent,
-  JSONEventType,
   ResolvedEvent,
 } from "@eventstore/db-client";
-import { AccountStore } from "../app/account.store";
-import { Account, Deposited, Withdrawn } from "../domain/account";
-import { EventOfAggregate } from "../domain/aggregate";
+import { EventOfAggregate } from "../../event-sourcing/aggregate";
+import { AccountStore } from "../application/account.store";
+import { Account, AccountId, Deposited, Withdrawn } from "../domain/account";
 
 export class EventStoreDBAccountStore extends AccountStore {
   client: EventStoreDBClient;
@@ -23,7 +22,13 @@ export class EventStoreDBAccountStore extends AccountStore {
     switch (event.type) {
       case "Deposited":
       case "Withdrawn":
-        return jsonEvent({ type: event.type, data: { amount: event.amount } });
+        return jsonEvent({
+          type: event.type,
+          data: {
+            accountId: event.accountId.serialize(),
+            amount: event.amount.serialize(),
+          },
+        });
     }
   }
 
@@ -36,30 +41,36 @@ export class EventStoreDBAccountStore extends AccountStore {
 
     switch (event.event.type) {
       case "Deposited":
-        return new Deposited(event.event.data.amount);
+        return Deposited.deserialize(event.event.data);
       case "Withdrawn":
-        return new Withdrawn(event.event.data.amount);
+        return Withdrawn.deserialize(event.event.data);
       default:
         throw new Error(`Event ${event.event.type} not handled !`);
     }
   }
 
+  private getStreamName(accountId: AccountId) {
+    return `Account-${accountId.serialize()}`;
+  }
+
   async save(account: Account): Promise<void> {
     const events = account.changes.map(this.serialize);
-    await this.client.appendToStream("account", events, {
-      expectedRevision: account.revision,
+    const stream = this.getStreamName(account.accountId);
+
+    await this.client.appendToStream(stream, events, {
+      expectedRevision: account.revision || "no_stream",
     });
   }
 
-  async load(): Promise<Account> {
-    const account = new Account();
-    const events = this.client.readStream("account", {
+  async load(accountId: AccountId): Promise<Account> {
+    const account = Account.instanciate(accountId);
+    const stream = this.getStreamName(account.accountId);
+    const events = this.client.readStream(stream, {
       direction: "forwards",
       fromRevision: "start",
     });
 
     for await (const event of events) {
-      event.event?.revision;
       account.play(this.deserialize(event), event.event?.revision);
     }
 

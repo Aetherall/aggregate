@@ -1,27 +1,30 @@
 import { Account } from "../domain/account";
+import { Money } from "../domain/amount";
 import { InMemoryAccountStore } from "./in-memory.account.store";
 
 describe("InMemoryAccountStore", () => {
   const store = new InMemoryAccountStore();
 
   it("should persist an account", async () => {
-    const account = new Account();
+    const account = Account.new();
 
-    account.deposit(10);
+    account.deposit(Money.deserialize(10));
 
     await store.save(account);
 
-    const { amount } = await store.load();
+    const { balance: amount } = await store.load(account.accountId);
 
-    expect(store.load()).toEqual(account.amount);
+    expect(amount).toEqual(account.balance);
   });
 
   it("should clear out changes", async () => {
-    const account = new Account();
-    account.deposit(10);
+    const account = Account.new();
+
+    account.deposit(Money.deserialize(10));
+
     await store.save(account);
 
-    const { changes } = await store.load();
+    const { changes } = await store.load(account.accountId);
 
     expect(account.changes).toEqual([]);
     expect(changes).toEqual([]);

@@ -1,6 +1,4 @@
-export interface Event {
-  type: string;
-}
+import { Event } from "./event";
 
 export function InternalStateEvent<T extends string>(type: T) {
   return class Event {

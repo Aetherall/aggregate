@@ -1,19 +1,21 @@
-import { Account } from "./domain/account";
-import { EventStoreDBAccountStore } from "./infra/event-store-db.account.store";
+import { Account } from "./account/domain/account";
+import { Money } from "./account/domain/amount";
+import { EventStoreDBAccountStore } from "./account/infrastructure/event-store-db.account.store";
 
 async function start() {
   const store = new EventStoreDBAccountStore();
 
-  // const account = new Account();
-  const account = await store.load();
+  const account = Account.new();
+  console.log(account);
+  // const account = await store.load();
 
-  account.deposit(10);
-  // account.deposit(100);
-  account.withdraw(100);
+  account.deposit(Money.new(10));
+  account.withdraw(Money.new(100));
 
   await store.save(account);
 
-  const stored = await store.load();
+  const stored = await store.load(account.accountId);
+
   console.log(stored);
 }
 
