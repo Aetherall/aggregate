@@ -1,7 +1,3 @@
-// import { Value } from "../errors/domain.error";
-
-// import { Value } from "../errors/domain.error";
-
 export {};
 
 type ValueConstructor<S> = (new (
@@ -47,28 +43,80 @@ type RuntimeShape<S> = S extends NumberConstructor
   ? { [K in keyof S]: RuntimeShape<S[K]> }
   : never;
 
-function serialize<S>(shape: S, runtime: RuntimeShape<S>): SerializedShape<S> {
-  // if (shape === Number) {
-  //   return runtime;
-  // }
-  // if (shape === String) {
-  //   return runtime;
-  // }
-  // if (shape === Boolean) {
-  //   return runtime;
-  // }
+function serialize<S extends any>(
+  shape: S,
+  runtime: RuntimeShape<S>
+): SerializedShape<S> {
+  if (shape === Number) {
+    return runtime as any;
+  }
 
-  // if ("serialize" in shape.prototype) {
-  //   return runtime.serialize();
-  // }
-  return {} as any;
+  if (shape === Boolean) {
+    return runtime as any;
+  }
+
+  if (shape === String) {
+    return runtime as any;
+  }
+
+  if ("serialize" in (runtime as any)) {
+    return (runtime as any).serialize();
+  }
+
+  if (Array.isArray(shape)) {
+    if (shape.length === 1) {
+      return (runtime as any).map((element: any) =>
+        serialize(shape[0] as any, element as any)
+      ) as any;
+    }
+
+    throw new Error("handle tuples");
+  }
+
+  const serialized: any = {};
+  for (const key in shape) {
+    const subshape = shape[key];
+    serialized[key] = serialize(subshape, (runtime as any)[key]);
+  }
+  return serialized;
 }
 
-function deserialize<S>(
+function deserialize<S extends any>(
   shape: S,
   serialized: SerializedShape<S>
 ): RuntimeShape<S> {
-  return {} as any;
+  if (shape === Number) {
+    return serialized as any;
+  }
+
+  if (shape === Boolean) {
+    return serialized as any;
+  }
+
+  if (shape === String) {
+    return serialized as any;
+  }
+
+  if ("deserialize" in (shape as any)) {
+    return (shape as any).deserialize(serialized);
+  }
+
+  if (Array.isArray(shape)) {
+    if (shape.length === 1) {
+      return (serialized as any[]).map((element) =>
+        deserialize(shape[0], element)
+      ) as any;
+    }
+
+    throw new Error("handle tuples");
+  }
+
+  const deserialized: any = {};
+  for (const key in shape) {
+    const subshape: any = shape[key];
+    deserialized[key] = deserialize(subshape, (serialized as any)[key]);
+  }
+  return deserialized;
 }
 
 function Value<S>(shape: S) {
@@ -152,6 +200,12 @@ describe("Value", () => {
       const money = Money.deserialize(2);
 
       expect(money.serialize()).toEqual(2);
+    });
+
+    it("uses value internally", () => {
+      const money = Money.deserialize(2);
+
+      expect(money.value).toBeInstanceOf(Amount);
     });
   });
 
@@ -335,7 +389,7 @@ describe("Value", () => {
     });
   });
 
-  describe("Tuple", () => {
+  describe.skip("Tuple", () => {
     describe("of Primitives", () => {
       class Geo extends Value([Number, Number] as const) {
         get total() {
