@@ -1,6 +1,6 @@
 import { ApplicativeError } from "../../../errors/applicative.error";
 import { AccountId } from "../../domain/account";
-import { Money } from "../../domain/amount";
+import { Money } from "../../domain/money";
 import { AccountStore } from "../account.store";
 
 export class RefillCommand {

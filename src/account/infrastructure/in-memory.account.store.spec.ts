@@ -1,5 +1,5 @@
 import { Account } from "../domain/account";
-import { Money } from "../domain/amount";
+import { Money } from "../domain/money";
 import { InMemoryAccountStore } from "./in-memory.account.store";
 
 describe("InMemoryAccountStore", () => {

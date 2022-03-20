@@ -1,5 +1,5 @@
 import { Account } from "./account/domain/account";
-import { Money } from "./account/domain/amount";
+import { Money } from "./account/domain/money";
 import { EventStoreDBAccountStore } from "./account/infrastructure/event-store-db.account.store";
 
 async function start() {

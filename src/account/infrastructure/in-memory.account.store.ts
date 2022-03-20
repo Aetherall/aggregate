@@ -26,7 +26,7 @@ export class InMemoryAccountStore extends AccountStore {
   async load(accountId: AccountId) {
     const account = Account.instanciate(accountId);
     for (const event of this.stream) {
-      if (event.accountId.serialize() === accountId.serialize()) {
+      if (event.value.AccountId.serialize() === accountId.serialize()) {
         account.play(event);
       }
     }

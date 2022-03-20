@@ -1,10 +1,12 @@
 import { Event } from "./event";
 
-export function InternalStateEvent<T extends string>(type: T) {
-  return class Event {
-    type = type;
-  };
-}
+type Event = { type: string };
+
+// export function InternalStateEvent<T extends string>(type: T) {
+//   return class Event {
+//     type = type;
+//   };
+// }
 
 type OneOf<T extends Array<any>> = T extends Array<infer E> ? E : never;
 

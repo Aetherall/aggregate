@@ -19,17 +19,7 @@ export class EventStoreDBAccountStore extends AccountStore {
   }
 
   private serialize(event: EventOfAggregate<Account>): EventData {
-    switch (event.type) {
-      case "Deposited":
-      case "Withdrawn":
-        return jsonEvent({
-          type: event.type,
-          data: {
-            accountId: event.accountId.serialize(),
-            amount: event.amount.serialize(),
-          },
-        });
-    }
+    return jsonEvent({ type: event.type, data: event.serialize() });
   }
 
   private deserialize(event: ResolvedEvent<any>) {

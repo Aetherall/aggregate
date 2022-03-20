@@ -5,13 +5,13 @@ export class TotalProjection {
   total = 0;
 
   @Projection.on(Deposited)
-  async onDeposit(event: Deposited) {
-    this.total += event.amount.serialize();
+  async onDeposit({ value: { amount } }: Deposited) {
+    this.total += amount.serialize();
   }
 
   @Projection.on(Withdrawn)
-  async onWithdrawn(event: Withdrawn) {
-    this.total -= event.amount.serialize();
+  async onWithdrawn({ value: { amount } }: Withdrawn) {
+    this.total -= amount.serialize();
   }
 
   getTotal() {

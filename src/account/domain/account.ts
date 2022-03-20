@@ -1,58 +1,12 @@
-import { Aggregate, InternalStateEvent } from "../../event-sourcing/aggregate";
-import { Money } from "./amount";
+import { DomainError } from "../../errors/domain.error";
+import { Aggregate } from "../../event-sourcing/aggregate";
+import { Event } from "../../event-sourcing/event";
+import { Money } from "./money";
 import { Id } from "./id";
 
-export class Deposited extends InternalStateEvent("Deposited") {
-  constructor(
-    public readonly accountId: AccountId,
-    public readonly amount: Money
-  ) {
-    super();
-  }
-
-  static deserialize({
-    accountId,
-    amount,
-  }: {
-    accountId: string;
-    amount: number;
-  }) {
-    return new this(
-      AccountId.deserialize(accountId),
-      Money.deserialize(amount)
-    );
-  }
-}
-
-export class Withdrawn extends InternalStateEvent("Withdrawn") {
-  constructor(
-    public readonly accountId: AccountId,
-    public readonly amount: Money
-  ) {
-    super();
-  }
-
-  static deserialize({
-    accountId,
-    amount,
-  }: {
-    accountId: string;
-    amount: number;
-  }) {
-    return new this(
-      AccountId.deserialize(accountId),
-      Money.deserialize(amount)
-    );
-  }
-}
-
 export class AccountId extends Id {}
-
-class DomainError extends Error {
-  constructor(message: string) {
-    super(`[DomainError] ${message}`);
-  }
-}
+export class Deposited extends Event({ AccountId, amount: Money }) {}
+export class Withdrawn extends Event({ AccountId, amount: Money }) {}
 
 class AccountError extends DomainError {
   constructor(accountId: AccountId, reason: string) {
@@ -83,7 +37,7 @@ export class Account extends Aggregate<Deposited | Withdrawn> {
   balance = Money.null();
 
   deposit(amount: Money) {
-    this.apply(new Deposited(this.accountId, amount));
+    super.apply(new Deposited({ AccountId: this.accountId, amount }));
   }
 
   withdraw(amount: Money) {
@@ -91,16 +45,16 @@ export class Account extends Aggregate<Deposited | Withdrawn> {
       throw new NegativeBalanceError(this.accountId);
     }
 
-    this.apply(new Withdrawn(this.accountId, amount));
+    super.apply(new Withdrawn({ AccountId: this.accountId, amount }));
   }
 
   @Aggregate.on(Withdrawn)
-  protected onWithdrawn({ amount }: Withdrawn) {
+  protected onWithdrawn({ value: { amount } }: Withdrawn) {
     this.balance = this.balance.subtract(amount);
   }
 
   @Aggregate.on(Deposited)
-  protected onDeposited({ amount }: Deposited) {
+  protected onDeposited({ value: { amount } }: Deposited) {
     this.balance = this.balance.add(amount);
   }
 }

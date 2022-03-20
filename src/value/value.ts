@@ -1,7 +1,3 @@
-// class Money extends Value(Number) {}
-export {};
-// class Geo extends Value([Number, Number] as const) {}
-
 type ValueConstructor<S> = (new (
   value: RuntimeShape<S>
 ) => ValueInstance<S>) & {
@@ -15,6 +11,10 @@ type ValueInstance<S> = {
 
 type SerializedShape<S> = S extends NumberConstructor
   ? number
+  : S extends StringConstructor
+  ? string
+  : S extends BooleanConstructor
+  ? boolean
   : S extends ValueConstructor<infer U>
   ? SerializedShape<U>
   : S extends Array<infer U>
@@ -27,6 +27,10 @@ type SerializedShape<S> = S extends NumberConstructor
 
 type RuntimeShape<S> = S extends NumberConstructor
   ? number
+  : S extends StringConstructor
+  ? string
+  : S extends BooleanConstructor
+  ? boolean
   : S extends ValueConstructor<any>
   ? InstanceType<S>
   : S extends Array<infer U>
@@ -37,100 +41,97 @@ type RuntimeShape<S> = S extends NumberConstructor
   ? { [K in keyof S]: RuntimeShape<S[K]> }
   : never;
 
-function Value<S>(shape: S) {
-  return class Intermediate {
+function serialize<S extends any>(
+  shape: S,
+  runtime: RuntimeShape<S>
+): SerializedShape<S> {
+  if (shape === Number) {
+    return runtime as any;
+  }
+
+  if (shape === Boolean) {
+    return runtime as any;
+  }
+
+  if (shape === String) {
+    return runtime as any;
+  }
+
+  if ("serialize" in (runtime as any)) {
+    return (runtime as any).serialize();
+  }
+
+  if (Array.isArray(shape)) {
+    if (shape.length === 1) {
+      return (runtime as any).map((element: any) =>
+        serialize(shape[0] as any, element as any)
+      ) as any;
+    }
+
+    throw new Error("handle tuples");
+  }
+
+  const serialized: any = {};
+  for (const key in shape) {
+    const subshape = shape[key];
+    serialized[key] = serialize(subshape, (runtime as any)[key]);
+  }
+  return serialized;
+}
+
+function deserialize<S extends any>(
+  shape: S,
+  serialized: SerializedShape<S>
+): RuntimeShape<S> {
+  if (shape === Number) {
+    return serialized as any;
+  }
+
+  if (shape === Boolean) {
+    return serialized as any;
+  }
+
+  if (shape === String) {
+    return serialized as any;
+  }
+
+  if ("deserialize" in (shape as any)) {
+    return (shape as any).deserialize(serialized);
+  }
+
+  if (Array.isArray(shape)) {
+    if (shape.length === 1) {
+      return (serialized as any[]).map((element) =>
+        deserialize(shape[0], element)
+      ) as any;
+    }
+
+    throw new Error("handle tuples");
+  }
+
+  const deserialized: any = {};
+  for (const key in shape) {
+    const subshape: any = shape[key];
+    deserialized[key] = deserialize(subshape, (serialized as any)[key]);
+  }
+  return deserialized;
+}
+
+export function Value<S>(shape: S) {
+  abstract class Intermediate {
     constructor(public readonly value: RuntimeShape<S>) {}
 
     serialize(): SerializedShape<S> {
-      return (this as any).value;
+      return serialize(shape, this.value);
     }
 
     static deserialize<T extends ValueConstructor<S>>(
       this: T,
       serialized: SerializedShape<S>
     ) {
-      return new this(serialized as any) as InstanceType<T>;
-    }
-  };
-}
-
-class Amount extends Value(Number) {
-  test() {
-    this.value;
-  }
-
-  add(other: Amount) {
-    return new Amount(this.value + other.value);
-  }
-}
-
-Amount.deserialize(2);
-
-class Money extends Value(Amount) {
-  add(addend: Money) {
-    return new Money(this.value.add(addend.value));
-  }
-}
-
-Money.deserialize(2);
-
-class Listing extends Value([Number]) {
-  constructor(value: number[]) {
-    super(value);
-    if (value.length > 2) {
-      throw new Error("");
+      return new this(deserialize(shape, serialized)) as InstanceType<T>;
     }
   }
 
-  test() {
-    this.value;
-  }
+  return Intermediate;
 }
-
-Listing.deserialize([2, 2]);
-
-class Geo extends Value([Number, Number] as const) {
-  test() {
-    this.value[0];
-  }
-}
-
-class GeoPos extends Value([Money, Money] as const) {
-  test() {
-    this.value;
-  }
-}
-
-GeoPos.deserialize([2, 2]);
-
-class Transfer extends Value({ in: Money, out: Money }) {
-  test() {
-    this.value;
-  }
-}
-
-Transfer.deserialize({ in: 3, out: 2 });
-
-class Extract extends Value([Transfer]) {
-  test() {
-    this.value;
-  }
-}
-
-Extract.deserialize([{ in: 2, out: 2 }]);
-
-class Event extends Value({ in: Money, out: [Money] }) {
-  test() {
-    this.value.out;
-  }
-}
-
-Event.deserialize({ in: 2, out: [2] });
-
-class Matrix extends Value([[Number]]) {
-  test() {
-    this.value;
-  }
-}
-
-Matrix.deserialize([[2]]);
